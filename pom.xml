@@ -1,0 +1,59 @@
+<project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<modelVersion>4.0.0</modelVersion>
+<groupId>org.hucompute.textimager</groupId>
+<artifactId>performance_monitor</artifactId>
+<version>1.0-SNAPSHOT</version>
+<properties>
+<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+<maven.compiler.source>1.8</maven.compiler.source>
+<maven.compiler.target>1.8</maven.compiler.target>
+<textimager.version>a8e0830d3c498bd5ef981079d58965f740053b4d</textimager.version>
+<ttlabtypesystem.version>3bfcc6aba458ee4f4051352d8acb29810a139237</ttlabtypesystem.version>
+<dkpro.version>2.1.0</dkpro.version>
+</properties>
+<repositories>
+<repository>
+<id>jitpack.io</id>
+<url>https://jitpack.io</url>
+</repository>
+</repositories>
+<dependencies>
+<dependency>
+<groupId>com.github.Myyyvothrr.textimager-uima</groupId>
+<artifactId>textimager-uima-types</artifactId>
+<version>${textimager.version}</version>
+</dependency>
+<dependency>
+<groupId>com.github.Myyyvothrr.textimager-uima</groupId>
+<artifactId>textimager-uima-spacy</artifactId>
+<version>${textimager.version}</version>
+</dependency>
+<dependency>
+<groupId>com.github.Myyyvothrr.textimager-uima</groupId>
+<artifactId>textimager-uima-textblob</artifactId>
+<version>${textimager.version}</version>
+</dependency>
+<dependency>
+<groupId>com.github.texttechnologylab</groupId>
+<artifactId>UIMATypeSystem</artifactId>
+<version>${ttlabtypesystem.version}</version>
+</dependency>
+<dependency>
+<groupId>org.dkpro.core</groupId>
+<artifactId>dkpro-core-corenlp-gpl</artifactId>
+<version>${dkpro.version}</version>
+</dependency>
+<dependency>
+<groupId>org.hucompute.textimager.uima</groupId>
+<artifactId>textimager-uima-steps</artifactId>
+<version>0.3.0</version>
+</dependency>
+<!-- https://mvnrepository.com/artifact/org.dkpro.core/dkpro-core-languagetool-asl -->
+<dependency>
+    <groupId>org.dkpro.core</groupId>
+    <artifactId>dkpro-core-languagetool-asl</artifactId>
+    <version>1.12.0</version>
+</dependency>
+
+</dependencies>
+</project>
