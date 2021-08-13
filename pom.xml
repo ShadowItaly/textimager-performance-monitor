@@ -65,6 +65,12 @@
 <artifactId>textimager-uima-steps</artifactId>
 <version>0.3.0</version>
 </dependency>
+    <dependency>
+      <groupId>org.json</groupId>
+      <artifactId>json</artifactId>
+      <version>20180130</version>
+    </dependency>
+
 <!-- https://mvnrepository.com/artifact/org.dkpro.core/dkpro-core-languagetool-asl -->
 <dependency>
     <groupId>org.dkpro.core</groupId>
