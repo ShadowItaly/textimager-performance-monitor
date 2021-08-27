@@ -4,6 +4,7 @@ import json
 import numpy as np
 import os
 import json
+from functools import reduce
 st.title("Performance evaluation Module")
 
 dirs = os.listdir( "./experiments" )
@@ -14,59 +15,65 @@ data = pd.DataFrame()
 selector = {}
 for x in samples:
     output = json.load(open("./experiments/"+experiment+"/"+x,"r"))
+    basic_frame = pd.DataFrame(output["data"])
     if output["gpu"]:
-        selector[output["gpu_name"]+":"+output["date"]] = output
+        basic_frame[output["gpu_name"]+":"+output["date"]] = basic_frame["runtime"]/1000000000
+        selector[output["gpu_name"]+":"+output["date"]] = (basic_frame,output)
     else:
-        selector[output["cpu_name"]+":"+output["date"]] = output
+        basic_frame[output["cpu_name"]+":"+output["date"]] = basic_frame["runtime"]/1000000000
+        selector[output["cpu_name"]+":"+output["date"]] = (basic_frame,output)
 
 
-multi = st.multiselect("Select the samples",selector.keys())
-
-data = pd.DataFrame(output_gpu["data"])
+multi = st.multiselect("Select the samples",list(selector.keys()))
 
 for x in multi:
-    data[x] = pd.DataFrame(selector[x]["data"])
-    data[x]["runtime"] = data[x]["runtime"]/1000000000
+    st.markdown("**Specification for: "+x+"**")
+    st.write("Number of iterations: ",selector[x][1]["iterations_total"])
+    st.write("Warumup iterations: ",selector[x][1]["iterations_warmup"])
+    st.write("Date of sample: ",selector[x][1]["date"])
+    st.write("GPU accelerated: ",selector[x][1]["gpu"])
+    with st.beta_expander("Processor details"):
+        st.write("Processor: ",selector[x][1]["processor"])
+        st.write("Processor name: ",selector[x][1]["cpu_name"])
+        st.write("Physical CPU's: ",selector[x][1]["phys_cpus"])
+        st.write("Logical CPU's: ",selector[x][1]["log_cpus"])
+        st.write("CPU frequency (Hz): ",selector[x][1]["cpu_freq"])
 
-    with st.beta_expander("Specification for: "+x):
-        st.write("Number of iterations: ",selector[x]["iterations_total"])
-        st.write("Warumup iterations: ",selector[x]["iterations_warmup"])
-        st.write("Date of sample: ",selector[x]["date"])
-        with st.beta_expander("Processor details"):
-            st.write("Processor: ",selector[x]["processor"])
-            st.write("Processor name: ",selector[x]["cpu_name"])
-            st.write("Physical CPU's: ",selector[x]["phys_cpus"])
-            st.write("Logical CPU's: ",selector[x]["log_cpus"])
-            st.write("CPU frequency (Hz): ",selector[x]["cpu_freq"])
+    with st.beta_expander("GPU Details"):
+        st.write("Name: ",selector[x][1]["gpu_name"])
+    st.write(selector[x][0])
 
-        with st.beta_expander("GPU Details"):
-            st.write("Name: ",selector[x]["gpu_name"])
-        st.write(data)
 
+result = reduce(lambda x, y: pd.merge(x, y, how="inner",on = ["document_text","batch_size"]), list(map(lambda x: selector[x][0],multi)))
 st.markdown("## Evaluation")
-for x in pd.unique(data["document_text"]):
-    res = data[data["document_text"] == x]
+for x in pd.unique(result["document_text"]):
+    st.title("=================================================")
+    res = result[result["document_text"] == x]
     st.write(res)
     with st.beta_expander("Document text"):
         st.text(x)
 
-    new_df = pd.DataFrame({"runtime_gpu": res["runtime"].to_numpy(), "runtime_cpu": res["runtime_cpu"].to_numpy(), "batch_size": res["batch_size"].to_numpy()})
+    new_obj = {}
+    for y in multi:
+        new_obj[y] = res[y].to_numpy()
+    new_obj["batch_size"] = res["batch_size"].to_numpy()
+    new_df = pd.DataFrame(new_obj)
     new_df = new_df.set_index("batch_size")
-    st.line_chart(new_df[["runtime_gpu","runtime_cpu"]])
+    st.line_chart(new_df)
 
 st.markdown("### Statistics over whole dataset")
-st.bar_chart(data.agg({'runtime' : ['max', 'mean', 'min'], 'runtime_cpu': ['max','mean','min']}))
-st.bar_chart(data.agg({'runtime' : ['max', 'mean', 'min']}))
-st.bar_chart(data.agg({'runtime_cpu' : ['max', 'mean', 'min']}))
+new_agg = {}
+for x in multi:
+    new_agg[x] = ['max','mean','min']
+st.bar_chart(result.agg(new_agg))
+for x in multi:
+    st.bar_chart(result.agg({x : ['max', 'mean', 'min']}))
 
-st.markdown("Runtime GPU by number of lines")
-st.bar_chart(data.groupby(["lines"]).agg({'runtime': ['max','mean','min'],"runtime_cpu":['max','mean','min']})["runtime"])
-st.markdown("Runtime CPU by number of lines")
-st.bar_chart(data.groupby(["lines"]).agg({'runtime': ['max','mean','min'],"runtime_cpu":['max','mean','min']})["runtime_cpu"])
+for x in multi:
+    st.markdown("Runtime "+x+" by number of lines")
+    st.bar_chart(result.groupby(["lines"]).agg(new_agg)[x])
 
-data['length'] = data['document_text'].apply(lambda x: len(x))
-st.markdown("Runtime GPU by number of characters")
-st.bar_chart(data.groupby(["length"]).agg({'runtime': ['max','mean','min'],"runtime_cpu":['max','mean','min']})["runtime"])
-
-st.markdown("Runtime CPU by number of characters")
-st.bar_chart(data.groupby(["length"]).agg({'runtime': ['max','mean','min'],"runtime_cpu":['max','mean','min']})["runtime_cpu"])
+result['length'] = result['document_text'].apply(lambda x: len(x))
+for x in multi:
+    st.markdown("Runtime "+x+" by number of characters")
+    st.bar_chart(result.groupby(["length"]).agg(new_agg)[x])
