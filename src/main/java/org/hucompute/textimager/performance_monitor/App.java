@@ -43,7 +43,7 @@ class TestResult {
   public TestResult(long time, String document_text, int batch_size, String document_language, boolean gpu) {
     _executionTime = time;
     _document_text = document_text;
-    _numSentences = document_text.lines().count();
+    _numSentences = document_text.split("\n").length;
     _batch_size = batch_size;
     _document_language = document_language;
     _gpu = gpu;
@@ -246,7 +246,7 @@ public class App
 
       int batch_sizes[] = {1,2,4,8,16,32};
       String []texts = {goethe_vor_dem_thor,goethe_der_strauss_den_ich_gepfluckt_habe,kafka_aus_dem_grunde,das_parfum_patrick_susskind,shakespear_the_tempest,conan_doyle_sherlock_holmes};
-      String []langu= {"de","de","de","de","en","en"};
+      String []langu= {"en","en","en","en","en","en"};
 
       for(int i = 0; i < texts.length; i++) {
         for(int j = 0; j < batch_sizes.length; j++) {
