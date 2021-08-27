@@ -11,11 +11,13 @@ import de.tudarmstadt.ukp.dkpro.core.api.segmentation.type.Sentence;
 import org.hucompute.textimager.uima.biofid.flair.BiofidFlair;
 import org.dkpro.core.languagetool.LanguageToolSegmenter;
 import org.hucompute.textimager.uima.steps.StepsParser;
+import java.time.LocalTime; // import the LocalTime class
 
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Vector;
+import java.time.LocalDate; // import the LocalDate class
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -27,6 +29,7 @@ import oshi.hardware.HardwareAbstractionLayer;
 import java.lang.Runtime;
 import java.lang.Process;
 import java.io.*;
+import java.time.Instant;
 
 
 class TestResult {
@@ -77,7 +80,7 @@ public class App
         String[] splitString = (document_text.split(simple));
         int start = 0;
         for(String x : splitString) {
-          Sentence sentence1 = new Sentence(jc, start, x.length()+1);
+          Sentence sentence1 = new Sentence(jc, start, start+x.length());
           start+=x.length()+1;
           sentence1.addToIndexes();
         }
@@ -113,11 +116,11 @@ public class App
           BiofidFlair.set_batch_size(jCas,batch_size);
           annotate_sentences(jCas,document_text);
         }
-        long total = System.nanoTime()-startTime;
+        long total = (System.nanoTime()-startTime)/(NUM_ITERATIONS_TOTAL-NUM_ITERATIONS_WARMUP);
         _results.add(new TestResult(total,document_text,batch_size,document_language, gpu));
     }
     
-    public void write_results() throws IOException {
+    public void write_results(boolean gpu) throws IOException {
       JSONObject outer = new JSONObject();
       JSONArray arr = new JSONArray();
       for(int i = 0; i < _results.size(); i++) {
@@ -136,24 +139,28 @@ public class App
       CentralProcessor.ProcessorIdentifier processorIdentifier = processor.getProcessorIdentifier();
 
       outer.put("processor",processor.toString());
+      outer.put("date",Instant.now().toString());
+
       
+      outer.put("cpu_name", processorIdentifier.getName());
       outer.put("phys_cpus", processor.getPhysicalProcessorCount());
       outer.put("log_cpus", processor.getLogicalProcessorCount());
       outer.put("cpu_freq", processorIdentifier.getVendorFreq());
+      outer.put("gpu", gpu);
       Runtime rt = Runtime.getRuntime();
-      String[] commands = {"nvidia-smi"};
+      String[] commands = {"nvidia-smi","--query-gpu=name","--format=csv,noheader"};
       Process proc = rt.exec(commands);
 
       BufferedReader stdInput = new BufferedReader(new InputStreamReader(proc.getInputStream()));
 
-      System.out.println("Here is the standard output of the command:\n");
       String s = null;
       String output = new String();
       while ((s = stdInput.readLine()) != null) {
         output+=s;
-        output+="\n";
+        output+=";";
       }
-      outer.put("nvidia-smi",output);
+      output = output.substring(0, output.length() - 1);
+      outer.put("gpu_name",output);
       wr.write(outer.toString());
       wr.close();
     }
@@ -247,6 +254,6 @@ public class App
         }
       }
 
-      app.write_results();
+      app.write_results(false);
     }
 }

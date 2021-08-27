@@ -9,27 +9,41 @@ st.title("Performance evaluation Module")
 dirs = os.listdir( "./experiments" )
 experiment = st.selectbox("Select the experiment",dirs)
 
-output_gpu = json.load(open("./experiments/"+experiment+"/output.json","r"))
-output_cpu = json.load(open("./experiments/"+experiment+"/output_cpu.json","r"))
+samples = os.listdir("./experiments/"+experiment)
+data = pd.DataFrame()
+selector = {}
+for x in samples:
+    output = json.load(open("./experiments/"+experiment+"/"+x,"r"))
+    if output["gpu"]:
+        selector[output["gpu_name"]+":"+output["date"]] = output
+    else:
+        selector[output["cpu_name"]+":"+output["date"]] = output
+
+
+multi = st.multiselect("Select the samples",selector.keys())
 
 data = pd.DataFrame(output_gpu["data"])
-data["runtime_cpu"] = pd.DataFrame(output_cpu["data"])["runtime"]
-data["runtime_cpu"] = data["runtime_cpu"]/1000000000
-data["runtime"] = data["runtime"]/1000000000
-st.write("Number of iterations: ",output_cpu["iterations_total"])
-st.write("Warumup iterations: ",output_cpu["iterations_warmup"])
-with st.beta_expander("Processor details"):
-    st.write("Processor: ",output_cpu["processor"])
-    st.write("Physical CPU's: ",output_cpu["phys_cpus"])
-    st.write("Logical CPU's: ",output_cpu["log_cpus"])
-    st.write("CPU frequency (Hz): ",output_cpu["cpu_freq"])
 
-with st.beta_expander("GPU Details"):
-    st.write(output_gpu["nvidia-smi"])
-st.write(data)
+for x in multi:
+    data[x] = pd.DataFrame(selector[x]["data"])
+    data[x]["runtime"] = data[x]["runtime"]/1000000000
+
+    with st.beta_expander("Specification for: "+x):
+        st.write("Number of iterations: ",selector[x]["iterations_total"])
+        st.write("Warumup iterations: ",selector[x]["iterations_warmup"])
+        st.write("Date of sample: ",selector[x]["date"])
+        with st.beta_expander("Processor details"):
+            st.write("Processor: ",selector[x]["processor"])
+            st.write("Processor name: ",selector[x]["cpu_name"])
+            st.write("Physical CPU's: ",selector[x]["phys_cpus"])
+            st.write("Logical CPU's: ",selector[x]["log_cpus"])
+            st.write("CPU frequency (Hz): ",selector[x]["cpu_freq"])
+
+        with st.beta_expander("GPU Details"):
+            st.write("Name: ",selector[x]["gpu_name"])
+        st.write(data)
 
 st.markdown("## Evaluation")
-
 for x in pd.unique(data["document_text"]):
     res = data[data["document_text"] == x]
     st.write(res)
