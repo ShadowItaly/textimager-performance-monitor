@@ -35,6 +35,11 @@
 </repository>
 </repositories>
 <dependencies>
+  <dependency>
+    <groupId>com.github.oshi</groupId>
+    <artifactId>oshi-core</artifactId>
+    <version>5.3.4</version>
+</dependency>
 <dependency>
 <groupId>com.github.Myyyvothrr.textimager-uima</groupId>
 <artifactId>textimager-uima-types</artifactId>
@@ -63,6 +68,11 @@
 <dependency>
 <groupId>org.hucompute.textimager.uima</groupId>
 <artifactId>textimager-uima-steps</artifactId>
+<version>0.3.0</version>
+</dependency>
+<dependency>
+<groupId>org.hucompute.textimager.uima</groupId>
+<artifactId>textimager-uima-biofid-flair</artifactId>
 <version>0.3.0</version>
 </dependency>
     <dependency>

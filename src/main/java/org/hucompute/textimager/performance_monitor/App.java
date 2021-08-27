@@ -7,6 +7,8 @@ import org.apache.uima.fit.factory.JCasFactory;
 import org.apache.uima.fit.pipeline.SimplePipeline;
 import org.apache.uima.fit.util.JCasUtil;
 import org.apache.uima.jcas.JCas;
+import de.tudarmstadt.ukp.dkpro.core.api.segmentation.type.Sentence;
+import org.hucompute.textimager.uima.biofid.flair.BiofidFlair;
 import org.dkpro.core.languagetool.LanguageToolSegmenter;
 import org.hucompute.textimager.uima.steps.StepsParser;
 
@@ -19,6 +21,12 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import static org.apache.uima.fit.factory.AnalysisEngineFactory.createEngineDescription;
+import oshi.SystemInfo;
+import oshi.hardware.CentralProcessor;
+import oshi.hardware.HardwareAbstractionLayer;
+import java.lang.Runtime;
+import java.lang.Process;
+import java.io.*;
 
 
 class TestResult {
@@ -57,36 +65,97 @@ class TestResult {
 public class App 
 {
   private Vector<TestResult> _results;
+  private static int NUM_ITERATIONS_TOTAL = 1;
+  private static int NUM_ITERATIONS_WARMUP = 0;
 
     public App() {
       _results = new Vector<TestResult>();
     }
 
-    public void run_test(String document_text, int batch_size, String document_language, boolean gpu) {
+    public void annotate_sentences(JCas jc, String document_text) {
+        String simple = "[.?!]";
+        String[] splitString = (document_text.split(simple));
+        int start = 0;
+        for(String x : splitString) {
+          Sentence sentence1 = new Sentence(jc, start, x.length()+1);
+          start+=x.length()+1;
+          sentence1.addToIndexes();
+        }
+    }
+
+    public void run_test(String document_text, int batch_size, String document_language, boolean gpu) throws UIMAException, IOException {
         JCas jCas = JCasFactory.createText(document_text,
                 document_language);
 
         AnalysisEngineDescription segmenter = createEngineDescription(LanguageToolSegmenter.class);
 
-        AnalysisEngineDescription stepsParser = createEngineDescription(StepsParser.class,
-                StepsParser.PARAM_REST_ENDPOINT, "http://localhost:8000"
+     
+        //AnalysisEngineDescription stepsParser = createEngineDescription(StepsParser.class,
+        //        StepsParser.PARAM_REST_ENDPOINT, "http://localhost:8000"
+        //);
+            
+        AnalysisEngineDescription biodidFlairTagger = createEngineDescription(BiofidFlair.class,
+          BiofidFlair.PARAM_REST_ENDPOINT, "http://localhost:5567;http://localhost:5568;http://localhost:5569"
         );
 
-        StepsParser.set_batch_size(jCas,batch_size);
-        long startTime = System.nanoTime();
-        SimplePipeline.runPipeline(jCas, segmenter, stepsParser);
+        BiofidFlair.set_batch_size(jCas,batch_size);
+        annotate_sentences(jCas,document_text);
+        System.out.println(document_text);
+        long startTime = 0;
+        for(int i = 0; i < NUM_ITERATIONS_TOTAL; i++) {
+          if(i==NUM_ITERATIONS_WARMUP) {
+            startTime = System.nanoTime();
+          }
+          SimplePipeline.runPipeline(jCas, segmenter, biodidFlairTagger);
+          jCas.reset();
+          jCas.setDocumentText(document_text);
+          jCas.setDocumentLanguage(document_language);
+          BiofidFlair.set_batch_size(jCas,batch_size);
+          annotate_sentences(jCas,document_text);
+        }
         long total = System.nanoTime()-startTime;
         _results.add(new TestResult(total,document_text,batch_size,document_language, gpu));
     }
     
     public void write_results() throws IOException {
+      JSONObject outer = new JSONObject();
       JSONArray arr = new JSONArray();
       for(int i = 0; i < _results.size(); i++) {
         arr.put(_results.get(i).toJson());
       }
       File writer = new File("output.json");
       FileWriter wr = new FileWriter(writer);
-      wr.write(arr.toString());
+      outer.put("data",arr);
+      outer.put("iterations_total",App.NUM_ITERATIONS_TOTAL);
+      outer.put("iterations_warmup",App.NUM_ITERATIONS_WARMUP);
+
+      SystemInfo systemInfo = new SystemInfo();
+      HardwareAbstractionLayer hardware = systemInfo.getHardware();
+      CentralProcessor processor = hardware.getProcessor();
+      
+      CentralProcessor.ProcessorIdentifier processorIdentifier = processor.getProcessorIdentifier();
+
+      outer.put("processor",processor.toString());
+      
+      outer.put("phys_cpus", processor.getPhysicalProcessorCount());
+      outer.put("log_cpus", processor.getLogicalProcessorCount());
+      outer.put("cpu_freq", processorIdentifier.getVendorFreq());
+      Runtime rt = Runtime.getRuntime();
+      String[] commands = {"nvidia-smi"};
+      Process proc = rt.exec(commands);
+
+      BufferedReader stdInput = new BufferedReader(new InputStreamReader(proc.getInputStream()));
+
+      System.out.println("Here is the standard output of the command:\n");
+      String s = null;
+      String output = new String();
+      while ((s = stdInput.readLine()) != null) {
+        output+=s;
+        output+="\n";
+      }
+      outer.put("nvidia-smi",output);
+      wr.write(outer.toString());
+      wr.close();
     }
 
     public static void main( String[] args ) throws UIMAException,IOException
