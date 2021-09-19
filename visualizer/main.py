@@ -32,25 +32,25 @@ for x in multi:
     st.write("Warumup iterations: ",selector[x][1]["iterations_warmup"])
     st.write("Date of sample: ",selector[x][1]["date"])
     st.write("GPU accelerated: ",selector[x][1]["gpu"])
-    with st.beta_expander("Processor details"):
+    with st.expander("Processor details"):
         st.write("Processor: ",selector[x][1]["processor"])
         st.write("Processor name: ",selector[x][1]["cpu_name"])
         st.write("Physical CPU's: ",selector[x][1]["phys_cpus"])
         st.write("Logical CPU's: ",selector[x][1]["log_cpus"])
         st.write("CPU frequency (Hz): ",selector[x][1]["cpu_freq"])
 
-    with st.beta_expander("GPU Details"):
+    with st.expander("GPU Details"):
         st.write("Name: ",selector[x][1]["gpu_name"])
     st.write(selector[x][0])
 
 
-result = reduce(lambda x, y: pd.merge(x, y, how="inner",on = ["document_text","batch_size"]), list(map(lambda x: selector[x][0],multi)))
+result = reduce(lambda x, y: pd.merge(x, y, how="inner",on = ["document_text","batch_size","lines"]), list(map(lambda x: selector[x][0],multi)))
 st.markdown("## Evaluation")
 for x in pd.unique(result["document_text"]):
     st.title("=================================================")
     res = result[result["document_text"] == x]
     st.write(res)
-    with st.beta_expander("Document text"):
+    with st.expander("Document text"):
         st.text(x)
 
     new_obj = {}
@@ -69,6 +69,7 @@ st.bar_chart(result.agg(new_agg))
 for x in multi:
     st.bar_chart(result.agg({x : ['max', 'mean', 'min']}))
 
+st.write(result)
 for x in multi:
     st.markdown("Runtime "+x+" by number of lines")
     st.bar_chart(result.groupby(["lines"]).agg(new_agg)[x])
